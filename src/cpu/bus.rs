@@ -57,6 +57,7 @@ impl FlatMemory {
     #[must_use]
     pub fn new() -> Self {
         let data = vec![0; ADDRESS_SPACE_SIZE]
+            .into_boxed_slice()
             .try_into()
             .expect("ADDRESS_SPACE_SIZE is exactly the vector length");
         Self { data }
@@ -64,7 +65,7 @@ impl FlatMemory {
 
     #[must_use]
     pub fn as_slice(&self) -> &[u8] {
-        &self.data.as_slice()
+        self.data.as_slice()
     }
 }
 

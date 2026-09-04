@@ -22,15 +22,27 @@ impl Status {
         self.0 & flag != 0
     }
 
+    pub(crate) const fn from_bits(bits: u8) -> Self {
+        Self(bits)
+    }
+
+    pub(crate) fn insert(&mut self, flag: u8) {
+        self.0 |= flag;
+    }
+
+    pub(crate) fn remove(&mut self, flag: u8) {
+        self.0 &= !flag;
+    }
+
     pub(crate) fn set(&mut self, flag: u8, enabled: bool) {
         if enabled {
-            self.0 |= flag;
+            self.insert(flag);
         } else {
-            self.0 &= !flag;
+            self.remove(flag);
         }
     }
 
-    pub fn update_zero_and_negative(&mut self, value: u8) {
+    pub(crate) fn update_zero_and_negative(&mut self, value: u8) {
         self.set(Self::ZERO, value == 0);
         self.set(Self::NEGATIVE, value & 0x80 != 0);
     }
@@ -38,6 +50,6 @@ impl Status {
 
 impl Default for Status {
     fn default() -> Self {
-        Self(0)
+        Self(Self::INTERRUPT_DISABLE | Self::UNUSED)
     }
 }
