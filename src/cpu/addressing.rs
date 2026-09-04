@@ -35,7 +35,7 @@ impl<B: Bus> Cpu<B> {
                 let hi = self.bus.read(u16::from(ptr.wrapping_add(1)));
                 u16::from_le_bytes([lo, hi]).wrapping_add(u16::from(self.register_y))
             }
-            AddressingMode::Implied => return Err(CpuError::UnsupportedAddressingMode),
+            AddressingMode::Implied => unreachable!("implied addressing has no operand address"),
         };
 
         Ok(address)

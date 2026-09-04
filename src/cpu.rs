@@ -1,5 +1,5 @@
 use crate::cpu::{
-    bus::{Bus, BusError, FlatMemory},
+    bus::{Bus, BusError, FlatMemory, NesBus},
     opcode::{AddressingMode, Instruction, decode},
     status::Status,
 };
@@ -564,7 +564,6 @@ pub enum CpuError {
     Bus(BusError),
     UnknownOpcode { opcode: u8, address: u16 },
     ProgramTooLarge { len: usize, max: usize },
-    UnsupportedAddressingMode,
 }
 
 impl From<BusError> for CpuError {
@@ -586,7 +585,6 @@ impl core::fmt::Display for CpuError {
                     "program is {len} bytes; maximum loader size is {max} bytes"
                 )
             }
-            Self::UnsupportedAddressingMode => f.write_str("unsupported addressing mode"),
         }
     }
 }
@@ -597,6 +595,13 @@ impl Cpu<FlatMemory> {
     #[must_use]
     pub fn with_flat_memory() -> Self {
         Self::new(FlatMemory::new())
+    }
+}
+
+impl Cpu<NesBus> {
+    #[must_use]
+    pub fn with_nes_bus() -> Self {
+        Self::new(NesBus::new())
     }
 }
 

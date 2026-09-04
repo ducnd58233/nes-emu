@@ -1,4 +1,39 @@
+//  _______________ $10000  _______________
+// | PRG-ROM       |       |               |
+// | Upper Bank    |       |               |
+// |_ _ _ _ _ _ _ _| $C000 | PRG-ROM       |
+// | PRG-ROM       |       |               |
+// | Lower Bank    |       |               |
+// |_______________| $8000 |_______________|
+// | SRAM          |       | SRAM          |
+// |_______________| $6000 |_______________|
+// | Expansion ROM |       | Expansion ROM |
+// |_______________| $4020 |_______________|
+// | I/O Registers |       |               |
+// |_ _ _ _ _ _ _ _| $4000 |               |
+// | Mirrors       |       | I/O Registers |
+// | $2000-$2007   |       |               |
+// |_ _ _ _ _ _ _ _| $2008 |               |
+// | I/O Registers |       |               |
+// |_______________| $2000 |_______________|
+// | Mirrors       |       |               |
+// | $0000-$07FF   |       |               |
+// |_ _ _ _ _ _ _ _| $0800 |               |
+// | RAM           |       | RAM           |
+// |_ _ _ _ _ _ _ _| $0200 |               |
+// | Stack         |       |               |
+// |_ _ _ _ _ _ _ _| $0100 |               |
+// | Zero Page     |       |               |
+// |_______________| $0000 |_______________|
+
 pub const ADDRESS_SPACE_SIZE: usize = 0x1_00000;
+const CPU_RAM_SIZE: usize = 0x0800;
+
+const RAM_START: u16 = 0x0000;
+const RAM_MIRRORS_END: u16 = 0x1FFF;
+
+const PPU_REGISTERS_START: u16 = 0x2000;
+const PPU_REGISTERS_MIRRORS_END: u16 = 0x3FFF;
 
 pub trait Bus {
     fn read(&self, addr: u16) -> u8;
@@ -86,5 +121,89 @@ impl Bus for FlatMemory {
         let dst = self.data.get_mut(start..end).ok_or(BusError::OutOfRange)?;
         dst.copy_from_slice(bytes);
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NesBus {
+    cpu_ram: [u8; CPU_RAM_SIZE],
+}
+
+impl NesBus {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            cpu_ram: [0; CPU_RAM_SIZE],
+        }
+    }
+}
+
+impl Default for NesBus {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Bus for NesBus {
+    #[inline]
+    fn read(&self, addr: u16) -> u8 {
+        match addr {
+            RAM_START..=RAM_MIRRORS_END => {
+                let mirrored_addr = addr & 0x07FF;
+                self.cpu_ram[usize::from(mirrored_addr)]
+            }
+
+            PPU_REGISTERS_START..=PPU_REGISTERS_MIRRORS_END => {
+                let _mirrored_addr = PPU_REGISTERS_START | (addr & 0x0007);
+
+                todo!("PPU is not supported yet")
+            }
+
+            _ => 0,
+        }
+    }
+
+    #[inline]
+    fn write(&mut self, addr: u16, data: u8) {
+        match addr {
+            RAM_START..=RAM_MIRRORS_END => {
+                let mirrored_addr = addr & 0x07FF;
+                self.cpu_ram[usize::from(mirrored_addr)] = data;
+            }
+
+            PPU_REGISTERS_START..=PPU_REGISTERS_MIRRORS_END => {
+                let _mirrored_addr = PPU_REGISTERS_START | (addr & 0x0007);
+
+                todo!("PPU is not supported yet")
+            }
+
+            _ => {}
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cpu_ram_is_mirrored() {
+        let mut bus = NesBus::new();
+
+        bus.write(0x0005, 0x42);
+
+        assert_eq!(bus.read(0x0005), 0x42);
+        assert_eq!(bus.read(0x0805), 0x42);
+        assert_eq!(bus.read(0x1005), 0x42);
+        assert_eq!(bus.read(0x1805), 0x42);
+    }
+
+    #[test]
+    fn writing_to_mirror_updates_base_ram() {
+        let mut bus = NesBus::new();
+
+        bus.write(0x1805, 0x69);
+
+        assert_eq!(bus.read(0x0005), 0x69);
     }
 }
