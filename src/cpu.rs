@@ -68,25 +68,6 @@ impl<B: Bus> Cpu<B> {
         self.bus
     }
 
-    pub fn load_and_run(&mut self, program: &[u8]) -> Result<(), CpuError> {
-        self.load(program)?;
-        self.reset();
-        self.run()
-    }
-
-    pub fn load(&mut self, program: &[u8]) -> Result<(), CpuError> {
-        if program.len() > MAX_PROGRAM_SIZE {
-            return Err(CpuError::ProgramTooLarge {
-                len: program.len(),
-                max: MAX_PROGRAM_SIZE,
-            });
-        }
-
-        self.bus.load(PROGRAM_START, program)?;
-        self.bus.write_u16(RESET_VECTOR, PROGRAM_START);
-        Ok(())
-    }
-
     pub fn reset(&mut self) {
         self.register_a = 0;
         self.register_x = 0;
@@ -596,12 +577,24 @@ impl Cpu<FlatMemory> {
     pub fn with_flat_memory() -> Self {
         Self::new(FlatMemory::new())
     }
-}
 
-impl Cpu<NesBus> {
-    #[must_use]
-    pub fn with_nes_bus() -> Self {
-        Self::new(NesBus::new())
+    pub fn load_and_run(&mut self, program: &[u8]) -> Result<(), CpuError> {
+        self.load(program)?;
+        self.reset();
+        self.run()
+    }
+
+    pub fn load(&mut self, program: &[u8]) -> Result<(), CpuError> {
+        if program.len() > MAX_PROGRAM_SIZE {
+            return Err(CpuError::ProgramTooLarge {
+                len: program.len(),
+                max: MAX_PROGRAM_SIZE,
+            });
+        }
+
+        self.bus.load(PROGRAM_START, program)?;
+        self.bus.write_u16(RESET_VECTOR, PROGRAM_START);
+        Ok(())
     }
 }
 
